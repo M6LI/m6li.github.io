@@ -140,24 +140,3 @@ span.highlight {
     display: inline-block;
     border-radius: 10px;
 }
-
-body {
-  margin: 0;
-  padding: 20px;
-  background-color: #f4f4f4;
-  color: #333;
-  line-height: 1.6;
-}
-
-.container {
-  background: #fff;
-  margin: 0 auto;
-  padding: 20px;
-  max-width: 800px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-}
-
-li {
-  margin-bottom: 6px;
-}
