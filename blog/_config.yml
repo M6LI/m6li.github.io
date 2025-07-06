@@ -13,12 +13,9 @@ katex:
     # Default KaTeX rendering options. See https://github.com/Khan/KaTeX#rendering-options
     throw_error: false      # throwOnError - set to false if you want rendering to output error as text rather than a build error
     error_color: "#cc0000"  # errorColor
-    
-collections:
-  posts:
-    output: true
-    permalink: /blog/:year/:month/:day/:title/
-    source: blog/_posts
+
+baseurl: "/blog"         # so everything’s served under /blog
+permalink: /blog/:year/:month/:day/:title/
 
 scholar:
 style: apa
