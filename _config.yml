@@ -26,7 +26,6 @@ permalink: /blog/:year/:month/:day/:title/
 plugins:
   - jekyll-feed
   - jekyll-sitemap
-  - jekyll-scholar
 
 # Kramdown math settings
 kramdown:

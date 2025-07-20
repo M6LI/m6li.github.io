@@ -3,7 +3,6 @@ permalink: /blog/:year/:month/:day/:title/
 environment: prod
 url: "m6li.com"  # Sitemap base URL.
 plugins:
-  - jekyll-scholar
   - jekyll-sitemap
   - jekyll-feed
 
