@@ -3,16 +3,11 @@ permalink: /blog/:year/:month/:day/:title/
 environment: prod
 url: "m6li.com"  # Sitemap base URL.
 plugins:
-  - jekyll-scholar
   - jekyll-sitemap
   - jekyll-feed
 
 baseurl: "/blog"         # so everything’s served under /blog
 permalink: /blog/:year/:month/:day/:title/
-
-scholar:
-style: apa
-bibliography: bibliography.bib
 
 # Exclude from processing.
 # The following items will not be processed, by default.

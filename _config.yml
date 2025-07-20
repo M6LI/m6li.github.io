@@ -27,17 +27,11 @@ permalink: /blog/:year/:month/:day/:title/
 plugins:
   - jekyll-feed
   - jekyll-sitemap
-  - jekyll-scholar
 
 # Kramdown math settings
 kramdown:
   input: GFM
   math_engine: katex
-
-# jekyll-scholar bibliography
-scholar:
-  style: apa
-  bibliography: bibliography.bib
 
 # Optional: default layout for blog posts
 defaults:
