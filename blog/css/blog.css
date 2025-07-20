@@ -1,0 +1,4 @@
+body { font-family: Arial, sans-serif; max-width: 700px; margin: auto; padding: 1em; background: #fff; color: #333; }
+#nav { margin-bottom: 1em; }
+#nav a { margin-right: 1em; text-decoration: none; }
+.post-date { color: #888; font-size: 0.9em; }
