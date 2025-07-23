@@ -1,51 +1,15 @@
-# Site settings (your existing values)
-title:     "Muhammed's blog"
-email:     ""
-description: >- # this means “no newlines” until “baseurl:”
-  
-url:       "https://m6li.com" # the base hostname & protocol for your site
-
-# If you're serving the blog at https://username.github.io/blog,
-# leave baseurl empty and handle /blog in your permalink:
-baseurl: ""
-# Theme (you can keep your existing theme, or switch to minima/custom)
-
-# Where Jekyll looks for posts—by default it’s _posts at the root.
-# If you want to keep your blog files in blog/_posts, add:
-
-# Tell Jekyll to output those posts under /blog
+highlighter: rouge
 permalink: /blog/:year/:month/:day/:title/
-
-# Plugins you’re using for the blog
+environment: prod
+url: "http://gregorygundersen.com"  # Sitemap base URL.
 plugins:
-  - jekyll-feed
+  - jekyll-scholar
   - jekyll-sitemap
-  - jekyll-remote-theme
-  - jekyll-paginate
-  
-remote_theme: gwgundersen/blog-theme 
-
-# number of posts per page
-paginate: 5
-# path for additional pages
-paginate_path: "/blog/page:num/"
-
-
-# Kramdown math settings
-kramdown:
-  input: GFM
-  math_engine: katex
-
-# jekyll-scholar bibliography
-scholar:
-  style: apa
-  bibliography: bibliography.bib
-
-# Optional: default layout for blog posts
-defaults:
-  - scope:
-      path: ""
-      type: "posts"
-    values:
-      layout: post
-      author: "Your Name"
+  - jekyll-feed
+  - jekyll-katex
+katex:
+  js_path: "assets"  # Path used to search for katex.min.js
+  rendering_options:
+    # Default KaTeX rendering options. See https://github.com/Khan/KaTeX#rendering-options
+    throw_error: false      # throwOnError - set to false if you want rendering to output error as text rather than a build error
+    error_color: "#cc0000"  # errorColor
