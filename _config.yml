@@ -50,7 +50,7 @@ scholar:
 # Optional: default layout for blog posts
 defaults:
   - scope:
-      path: "blog/_posts"
+      path: ""
       type: "posts"
     values:
       layout: post
