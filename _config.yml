@@ -28,14 +28,14 @@ plugins:
   - jekyll-sitemap
   - jekyll-remote-theme
   - jekyll-paginate
+  
+remote_theme:  
+  gwgundersen/blog-theme  
 
 # number of posts per page
 paginate: 5
 # path for additional pages
 paginate_path: "/blog/page:num/"
-
-remote_theme:  
-  gwgundersen/blog-theme  
 
 
 # Kramdown math settings
