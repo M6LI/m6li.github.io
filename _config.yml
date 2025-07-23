@@ -27,6 +27,7 @@ plugins:
   - jekyll-feed
   - jekyll-sitemap
   - jekyll-remote-theme
+  - jekyll-paginate
 
 remote_theme:  
   gwgundersen/blog-theme  
