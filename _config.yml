@@ -13,10 +13,6 @@ collections_dir: blog
 
 # Where Jekyll looks for posts—by default it’s _posts at the root.
 # If you want to keep your blog files in blog/_posts, add:
-collections:
-  posts:
-    output: true
-    permalink: /blog/:year/:month/:day/:title/
 
 # Tell Jekyll to output those posts under /blog
 permalink: /blog/:year/:month/:day/:title/
