@@ -29,6 +29,11 @@ plugins:
   - jekyll-remote-theme
   - jekyll-paginate
 
+# number of posts per page
+paginate: 5
+# path for additional pages
+paginate_path: "/blog/page:num/"
+
 remote_theme:  
   gwgundersen/blog-theme  
 
