@@ -10,7 +10,6 @@ url:       "https://m6li.com" # the base hostname & protocol for your site
 baseurl: ""
 collections_dir: blog
 # Theme (you can keep your existing theme, or switch to minima/custom)
-theme: minima
 
 # Where Jekyll looks for posts—by default it’s _posts at the root.
 # If you want to keep your blog files in blog/_posts, add:
