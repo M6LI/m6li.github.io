@@ -8,7 +8,6 @@ url:       "https://m6li.com" # the base hostname & protocol for your site
 # If you're serving the blog at https://username.github.io/blog,
 # leave baseurl empty and handle /blog in your permalink:
 baseurl: ""
-collections_dir: blog
 # Theme (you can keep your existing theme, or switch to minima/custom)
 
 # Where Jekyll looks for posts—by default it’s _posts at the root.
