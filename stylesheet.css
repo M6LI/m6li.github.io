@@ -1,3 +1,70 @@
+/* === Dark theme to match the intro animation === */
+:root {
+  /* same gradient as the intro, re-usable */
+  --bg-grad: radial-gradient(1200px 800px at 50% 40%, #0b0b12 0%, #05050a 60%, #000 100%);
+  --grid-size: 64px;
+  --grid-color: rgba(255, 255, 255, 0.04);   /* softer than the canvas grid (0.06) */
+  --text: #e8ebff;
+  --muted: rgba(232, 235, 255, 0.7);
+  --link: #a5b8ff;
+  --link-hover: #d6ddff;
+  --card-bg: rgba(255,255,255,0.03);
+  --card-border: rgba(255,255,255,0.08);
+}
+
+/* GLOBAL BACKGROUND: gradient + subtle grid */
+html, body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  color: var(--text);
+  background-image:
+    var(--bg-grad),                                                 /* gradient base */
+    linear-gradient(var(--grid-color) 1px, transparent 1px),        /* horizontal grid lines */
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); /* vertical grid lines */
+  background-size:
+    auto,
+    var(--grid-size) var(--grid-size),
+    var(--grid-size) var(--grid-size);
+  background-position:
+    center,
+    0 0,
+    0 0;
+  background-attachment: fixed; /* nice feel on tall pages */
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Typography tweaks for dark background */
+p { color: var(--muted); }
+h1, h2, h3 { color: var(--text); }
+
+/* Links that pop on dark */
+a { color: var(--link); text-decoration: none; }
+a:hover { color: var(--link-hover); text-decoration: underline; }
+
+/* Your main content “card” can float on the dark bg nicely */
+table[style*="max-width:800px"] {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 16px;
+  backdrop-filter: blur(2px);
+}
+
+/* Images: add a subtle rim so they don’t blend into black */
+img {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px; /* you already set 50% for the profile; this is a default */
+}
+
+/* Make the intro overlay use the same gradient token */
+#intro {
+  background: var(--bg-grad);
+}
+
+
 /* latin-ext */
 @font-face {
   font-family: 'Lato';
