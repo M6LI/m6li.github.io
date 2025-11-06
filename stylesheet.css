@@ -45,12 +45,13 @@ a { color: var(--link); text-decoration: none; }
 a:hover { color: var(--link-hover); text-decoration: underline; }
 
 /* Your main content “card” can float on the dark bg nicely */
-table[style*="max-width:800px"] {
+.container {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 16px;
   backdrop-filter: blur(2px);
 }
+
 
 /* Images: add a subtle rim so they don’t blend into black */
 img {
