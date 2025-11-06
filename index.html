@@ -198,8 +198,13 @@
     // Animation parameters
     // Ease-in-out for k growth, then slight ease-out near the end.
     const ease = x => x<0.5 ? 2*x*x : 1 - Math.pow(-2*x+2,2)/2;
-    const kMax = 90;                        // final oscillation factor
-    const k = 2 + ease(Math.min(1, tNorm)) * (kMax - 2);
+    // Before:
+    // const kMax = 90;
+    // const k = 2 + ease(Math.min(1, tNorm)) * (kMax - 2);
+    
+    // After (reverse):
+    const kMin = 2, kMax = 90;
+    const k = kMax - ease(Math.min(1, tNorm)) * (kMax - kMin);
 
     // Domain: wider than screen so lobes extend beyond edges
     const aspect = w / h;
