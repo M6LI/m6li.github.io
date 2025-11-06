@@ -1,7 +1,7 @@
 /* === Dark theme to match the intro animation === */
 :root {
   /* same gradient as the intro, re-usable */
-  --bg-grad: radial-gradient(1200px 800px at 50% 40%, #0b0b12 0%, #05050a 60%, #000 100%);
+  --bg-grad: radial-gradient(1200px 800px at 50% 40%, #11121b 0%, #0d1222 60%, #09101a 100%);
   --grid-size: 64px;
   --grid-color: rgba(255, 255, 255, 0.04);   /* softer than the canvas grid (0.06) */
   --text: #e8ebff;
@@ -46,10 +46,22 @@ a:hover { color: var(--link-hover); text-decoration: underline; }
 
 /* Your main content “card” can float on the dark bg nicely */
 .container {
+  margin: 40px auto;            /* centre horizontally + add vertical spacing */
+  width: 100%;
+  max-width: 800px;             /* matches your HTML */
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 16px;
-  backdrop-filter: blur(2px);
+  backdrop-filter: blur(3px);
+  overflow: hidden;             /* clip rounded corners */
+  padding: 20px 30px;           /* add breathing room */
+}
+
+/* Remove unwanted padding on nested tables */
+.container table {
+  width: 100%;
+  margin: 0 auto;
+  border-collapse: collapse;
 }
 
 
