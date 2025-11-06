@@ -171,8 +171,12 @@
   resize();
   window.addEventListener('resize', resize, { passive: true });
   
-const EPS = 1e-3;      // start a hair to the right of 0 to avoid singularity
-const PAD = 64;        // left/right padding (device-independent px)
+const EPS = 1e-3;        // start right of 0 to avoid singularity
+const PAD = 64;          // px padding (device-independent)
+const VIEW_SPAN = 12;    // logical x-units visible at once (zoom level)
+const FOLLOW_PCT = 0.40; // keep the tip ~40% from the left of the view
+let camX = 0;            // camera left-edge in logical x
+
 
   // Map logical x-domain to pixels. We choose a domain that scales with aspect.
 function drawFrame(tNorm) {
@@ -181,7 +185,7 @@ function drawFrame(tNorm) {
   ctx.fillStyle = '#000';
   ctx.fillRect(0,0,w,h);
 
-  // Subtle glow grid (same as before)
+  // Subtle glow grid (screen-space, so it feels like the curve moves through it)
   ctx.strokeStyle = 'rgba(255,255,255,0.06)';
   ctx.lineWidth = 1;
   const gridStep = Math.round(64 * dpr);
@@ -190,97 +194,108 @@ function drawFrame(tNorm) {
   for (let y = 0; y <= h; y += gridStep) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
   ctx.stroke();
 
-  // Axes: origin at left center
-  const originPx = PAD * dpr;
+  // X-axis only (center). Avoid drawing a y-axis since camera scrolls in x.
   ctx.strokeStyle = 'rgba(255,255,255,0.15)';
   ctx.lineWidth = 1.25 * dpr;
   ctx.beginPath();
-  // x-axis
   ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
-  // y-axis at x=0 (left padding)
-  ctx.moveTo(originPx, 0); ctx.lineTo(originPx, h);
   ctx.stroke();
 
-  // Animation parameters
+  // Easing
   const ease = x => x<0.5 ? 2*x*x : 1 - Math.pow(-2*x+2,2)/2;
 
-  // k(t): keep your chosen direction (normal or reversed)
-  const kMin = 2, kMax = 50;
+  // k(t): tighten/relax — keep your chosen direction or reverse if you want
+  const kMin = 2, kMax = 90;
   const k = kMin + ease(Math.min(1, tNorm)) * (kMax - kMin);
 
-  // Logical domain is [0, Xmax]; we trace from EPS to X(t)
-  const Xmax = 20;            // how far to trace in logical x-units
+  // Trace progress: from EPS to Xend
+  const Xmax = 40; // overall distance to trace (increase if you want to travel farther)
   const progress = ease(Math.min(1, tNorm));
   const Xend = EPS + progress * (Xmax - EPS);
 
-  // Vertical scale so the curve fits nicely
+  // Camera follow (lerp toward target so it’s smooth)
+  const targetCam = Math.max(0, Xend - VIEW_SPAN * FOLLOW_PCT);
+  camX += (targetCam - camX) * 0.08; // follow stiffness; smaller = lazier camera
+
+  // Mapping world (x,y) -> screen px using camera and a fixed span
+  const leftPx = PAD * dpr;
+  const rightPx = w - PAD * dpr;
+  const usableW = Math.max(1, rightPx - leftPx);
   const Yscale = 0.42;
 
-  // Map logical (x,y) -> pixels, with x=0 at originPx
+  const viewLeft = camX;
+  const viewRight = camX + VIEW_SPAN;
+
   function toPx(x, y) {
-    const usableW = w - originPx - PAD * dpr;       // keep some right padding
-    const px = originPx + (x / Xmax) * usableW;
+    const px = leftPx + ((x - viewLeft) / (viewRight - viewLeft)) * usableW;
     const py = h/2 - y * (h * Yscale);
     return [px, py];
   }
 
-  // Trace y = sin(kx)/x from EPS..Xend
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
+  // Only draw the visible segment [max(EPS, viewLeft), min(Xend, viewRight)]
+  const segL = Math.max(EPS, viewLeft);
+  const segR = Math.min(Xend, viewRight);
 
-  // Outer glow stroke
-  ctx.strokeStyle = 'rgba(160,185,255,0.20)';
-  ctx.lineWidth = 6 * dpr;
+  if (segR > segL) {
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
 
-  const steps = Math.max(900, Math.floor((w/dpr) * 0.9));
-  ctx.beginPath();
-  let tipPx = [originPx, h/2]; // will update to last point for the tip marker
+    // Outer glow
+    ctx.strokeStyle = 'rgba(160,185,255,0.20)';
+    ctx.lineWidth = 6 * dpr;
 
-  for (let i = 0; i <= steps; i++) {
-    const x = EPS + (Xend - EPS) * (i / steps);
-    const denom = Math.max(x, EPS);        // guard near 0
-    const y = Math.sin(k * x) / denom;
+    const steps = Math.max(600, Math.floor((w/dpr) * 0.8));
+    ctx.beginPath();
+    let tipPx = [leftPx, h/2];
 
-    // Optional apodization toward the current end to keep it elegant
-    const fade = 0.92 + 0.08 * Math.cos(Math.min(1, (Xend - x) / (Xmax) ) * Math.PI);
-    const [px, py] = toPx(x, y * fade);
-    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    if (i === steps) tipPx = [px, py];
+    for (let i = 0; i <= steps; i++) {
+      const x = segL + (segR - segL) * (i / steps);
+      const denom = Math.max(x, EPS);
+      const y = Math.sin(k * x) / denom;
+
+      // Gentle fade near the right edge so new samples blend in
+      const edge = (segR - x) / (VIEW_SPAN * 0.25);
+      const fade = edge < 1 ? (0.92 + 0.08 * Math.max(0, Math.cos(edge * Math.PI))) : 1;
+
+      const [px, py] = toPx(x, y * fade);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      if (i === steps) tipPx = [px, py];
+    }
+    ctx.stroke();
+
+    // Core stroke
+    ctx.strokeStyle = 'rgba(220,230,255,0.95)';
+    ctx.lineWidth = 2.2 * dpr;
+    ctx.stroke();
+
+    // Tip marker (glow + core dot)
+    const [tx, ty] = tipPx;
+    const r = 5 * dpr;
+    const grad = ctx.createRadialGradient(tx, ty, 0, tx, ty, 18 * dpr);
+    grad.addColorStop(0, 'rgba(220,230,255,0.95)');
+    grad.addColorStop(1, 'rgba(220,230,255,0.0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(tx, ty, 18 * dpr, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(240,245,255,0.95)';
+    ctx.beginPath();
+    ctx.arc(tx, ty, r, 0, Math.PI * 2);
+    ctx.fill();
   }
-  ctx.stroke();
-
-  // Core stroke
-  ctx.strokeStyle = 'rgba(220,230,255,0.95)';
-  ctx.lineWidth = 2.2 * dpr;
-  ctx.stroke();
-
-  // Glowing tip marker
-  const [tx, ty] = tipPx;
-  const r = 5 * dpr;
-  const grad = ctx.createRadialGradient(tx, ty, 0, tx, ty, 18 * dpr);
-  grad.addColorStop(0, 'rgba(220,230,255,0.95)');
-  grad.addColorStop(1, 'rgba(220,230,255,0.0)');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(tx, ty, 18 * dpr, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = 'rgba(240,245,255,0.95)';
-  ctx.beginPath();
-  ctx.arc(tx, ty, r, 0, Math.PI * 2);
-  ctx.fill();
 
   // Label
   ctx.font = `${Math.round(14*dpr)}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter`;
   ctx.fillStyle = 'rgba(255,255,255,0.6)';
   ctx.textAlign = 'right';
-  ctx.fillText(`y = sin(kx)/x,  k ≈ ${k.toFixed(1)}`, w - 12*dpr, h - 14*dpr);
+  ctx.fillText(`y = sin(kx)/x  ·  k ≈ ${k.toFixed(1)}`, w - 12*dpr, h - 14*dpr);
 }
 
 
   // Animate for a short duration, then fade out
-  const DURATION_MS = 2400; // total animation time
-  const HOLD_MS = 300;      // brief hold before fade
+  const DURATION_MS = 8000; // total animation time
+  const HOLD_MS = 400;      // brief hold before fade
   let startTime = null;
   let finished = false;
 
