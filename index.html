@@ -100,5 +100,201 @@
         </td>
       </tr>
     </tbody></table>
+
+    <!-- Fullscreen Intro Animation Overlay -->
+<div id="intro" aria-hidden="true">
+  <canvas id="intro-canvas"></canvas>
+  <button id="intro-skip" aria-label="Skip intro">Skip</button>
+</div>
+
+<style>
+  /* Overlay fills the viewport and sits above everything */
+  #intro {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: radial-gradient(1200px 800px at 50% 40%, #0b0b12 0%, #05050a 60%, #000 100%);
+    display: grid;
+    place-items: center;
+    opacity: 1;
+    transition: opacity 600ms ease;
+  }
+  #intro.fade-out { opacity: 0; pointer-events: none; }
+
+  #intro-canvas {
+    width: 100vw;
+    height: 100vh;
+    display: block;
+  }
+
+  #intro-skip {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    color: #f4f6ff;
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+    font: 500 14px/1 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+    transition: background 200ms ease, transform 100ms ease;
+  }
+  #intro-skip:hover { background: rgba(255,255,255,0.15); }
+  #intro-skip:active { transform: translateY(1px); }
+
+  /* Respect reduced motion: skip immediately */
+  @media (prefers-reduced-motion: reduce) {
+    #intro { display: none !important; }
+  }
+</style>
+
+<script>
+(function() {
+  const overlay = document.getElementById('intro');
+  const canvas  = document.getElementById('intro-canvas');
+  const skipBtn = document.getElementById('intro-skip');
+  if (!overlay || !canvas) return;
+
+  const ctx = canvas.getContext('2d', { alpha: false });
+  let dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+  let raf = null;
+
+  function resize() {
+    dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+    const { innerWidth: w, innerHeight: h } = window;
+    canvas.width  = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+  }
+
+  resize();
+  window.addEventListener('resize', resize, { passive: true });
+
+  // Map logical x-domain to pixels. We choose a domain that scales with aspect.
+  function drawFrame(tNorm) {
+    const w = canvas.width, h = canvas.height;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,w,h);
+
+    // Subtle glow grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    const gridStep = Math.round(64 * dpr);
+    ctx.beginPath();
+    for (let x = 0; x <= w; x += gridStep) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+    for (let y = 0; y <= h; y += gridStep) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+    ctx.stroke();
+
+    // Axes
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1.25 * dpr;
+    ctx.beginPath();
+    ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
+    ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h);
+    ctx.stroke();
+
+    // Animation parameters
+    // Ease-in-out for k growth, then slight ease-out near the end.
+    const ease = x => x<0.5 ? 2*x*x : 1 - Math.pow(-2*x+2,2)/2;
+    const kMax = 90;                        // final oscillation factor
+    const k = 2 + ease(Math.min(1, tNorm)) * (kMax - 2);
+
+    // Domain: wider than screen so lobes extend beyond edges
+    const aspect = w / h;
+    const Xmax = 18 * Math.max(1, aspect);  // logical half-width
+    const Yscale = 0.42;                    // scale to keep inside view
+
+    // Coordinate transform: logical (x,y) -> pixel
+    function toPx(x, y) {
+      const px = (x / Xmax) * (w/2) + w/2;
+      const py = h/2 - y * (h * Yscale);
+      return [px, py];
+    }
+
+    // Draw sinc(k x) curve
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+
+    // Glow stroke (outer)
+    ctx.strokeStyle = 'rgba(160,185,255,0.20)';
+    ctx.lineWidth = 6 * dpr;
+
+    // Path
+    ctx.beginPath();
+    const steps = Math.max(1200, Math.floor(w * 0.9));
+    for (let i = 0; i <= steps; i++) {
+      const x = -Xmax + (2*Xmax) * (i/steps);
+      // y = sinc(kx) = sin(kx)/(kx); define y(0) = 1 by continuity
+      let y;
+      const z = k * x;
+      if (Math.abs(z) < 1e-4) {
+        y = 1; // limit
+      } else {
+        y = Math.sin(z) / z;
+      }
+
+      // Optional apodization to soften edges (keeps it elegant)
+      const window = 0.85 + 0.15 * Math.cos(Math.PI * x / Xmax);
+      const [px, py] = toPx(x, y * window);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    // Core stroke (inner)
+    ctx.strokeStyle = 'rgba(220,230,255,0.95)';
+    ctx.lineWidth = 2.2 * dpr;
+    ctx.stroke();
+
+    // Title / label (subtle)
+    ctx.font = `${Math.round(14*dpr)}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter`;
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.textAlign = 'right';
+    ctx.fillText(`sinc(kx),  k ≈ ${k.toFixed(1)}`, w - 12*dpr, h - 14*dpr);
+  }
+
+  // Animate for a short duration, then fade out
+  const DURATION_MS = 2400; // total animation time
+  const HOLD_MS = 300;      // brief hold before fade
+  let startTime = null;
+  let finished = false;
+
+  function loop(ts) {
+    if (!startTime) startTime = ts;
+    const elapsed = ts - startTime;
+    const tNorm = Math.min(1, elapsed / DURATION_MS);
+    drawFrame(tNorm);
+
+    if (elapsed < DURATION_MS + HOLD_MS && !finished) {
+      raf = requestAnimationFrame(loop);
+    } else if (!finished) {
+      finished = true;
+      overlay.classList.add('fade-out');
+      // Remove from DOM after transition ends to free memory
+      setTimeout(() => {
+        cancelAnimationFrame(raf);
+        window.removeEventListener('resize', resize);
+        overlay.remove();
+      }, 650);
+    }
+  }
+
+  raf = requestAnimationFrame(loop);
+
+  // Skip handler
+  skipBtn.addEventListener('click', () => {
+    if (finished) return;
+    finished = true;
+    overlay.classList.add('fade-out');
+    setTimeout(() => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', resize);
+      overlay.remove();
+    }, 300);
+  }, { passive: true });
+})();
+</script>
+
   </body>
 </html>
