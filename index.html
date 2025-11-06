@@ -170,94 +170,113 @@
 
   resize();
   window.addEventListener('resize', resize, { passive: true });
+  
+const EPS = 1e-3;      // start a hair to the right of 0 to avoid singularity
+const PAD = 64;        // left/right padding (device-independent px)
 
   // Map logical x-domain to pixels. We choose a domain that scales with aspect.
-  function drawFrame(tNorm) {
-    const w = canvas.width, h = canvas.height;
-    ctx.setTransform(1,0,0,1,0,0);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0,0,w,h);
+function drawFrame(tNorm) {
+  const w = canvas.width, h = canvas.height;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0,0,w,h);
 
-    // Subtle glow grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    const gridStep = Math.round(64 * dpr);
-    ctx.beginPath();
-    for (let x = 0; x <= w; x += gridStep) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
-    for (let y = 0; y <= h; y += gridStep) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
-    ctx.stroke();
+  // Subtle glow grid (same as before)
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  const gridStep = Math.round(64 * dpr);
+  ctx.beginPath();
+  for (let x = 0; x <= w; x += gridStep) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+  for (let y = 0; y <= h; y += gridStep) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+  ctx.stroke();
 
-    // Axes
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-    ctx.lineWidth = 1.25 * dpr;
-    ctx.beginPath();
-    ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
-    ctx.moveTo(w/2, 0); ctx.lineTo(w/2, h);
-    ctx.stroke();
+  // Axes: origin at left center
+  const originPx = PAD * dpr;
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1.25 * dpr;
+  ctx.beginPath();
+  // x-axis
+  ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
+  // y-axis at x=0 (left padding)
+  ctx.moveTo(originPx, 0); ctx.lineTo(originPx, h);
+  ctx.stroke();
 
-    // Animation parameters
-    // Ease-in-out for k growth, then slight ease-out near the end.
-    const ease = x => x<0.5 ? 2*x*x : 1 - Math.pow(-2*x+2,2)/2;
-    // Before:
-    // const kMax = 90;
-    // const k = 2 + ease(Math.min(1, tNorm)) * (kMax - 2);
-    
-    // After (reverse):
-    const kMin = 2, kMax = 90;
-    const k = kMax - ease(Math.min(1, tNorm)) * (kMax - kMin);
+  // Animation parameters
+  const ease = x => x<0.5 ? 2*x*x : 1 - Math.pow(-2*x+2,2)/2;
 
-    // Domain: wider than screen so lobes extend beyond edges
-    const aspect = w / h;
-    const Xmax = 18 * Math.max(1, aspect);  // logical half-width
-    const Yscale = 0.42;                    // scale to keep inside view
+  // k(t): keep your chosen direction (normal or reversed)
+  const kMin = 2, kMax = 90;
+  const k = kMin + ease(Math.min(1, tNorm)) * (kMax - kMin);
 
-    // Coordinate transform: logical (x,y) -> pixel
-    function toPx(x, y) {
-      const px = (x / Xmax) * (w/2) + w/2;
-      const py = h/2 - y * (h * Yscale);
-      return [px, py];
-    }
+  // Logical domain is [0, Xmax]; we trace from EPS to X(t)
+  const Xmax = 20;            // how far to trace in logical x-units
+  const progress = ease(Math.min(1, tNorm));
+  const Xend = EPS + progress * (Xmax - EPS);
 
-    // Draw sinc(k x) curve
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
+  // Vertical scale so the curve fits nicely
+  const Yscale = 0.42;
 
-    // Glow stroke (outer)
-    ctx.strokeStyle = 'rgba(160,185,255,0.20)';
-    ctx.lineWidth = 6 * dpr;
-
-    // Path
-    ctx.beginPath();
-    const steps = Math.max(1200, Math.floor(w * 0.9));
-    for (let i = 0; i <= steps; i++) {
-      const x = -Xmax + (2*Xmax) * (i/steps);
-      // y = sinc(kx) = sin(kx)/(kx); define y(0) = 1 by continuity
-      let y;
-      const z = k * x;
-      if (Math.abs(z) < 1e-4) {
-        y = 1; // limit
-      } else {
-        y = Math.sin(z) / z;
-      }
-
-      // Optional apodization to soften edges (keeps it elegant)
-      const window = 0.85 + 0.15 * Math.cos(Math.PI * x / Xmax);
-      const [px, py] = toPx(x, y * window);
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-    }
-    ctx.stroke();
-
-    // Core stroke (inner)
-    ctx.strokeStyle = 'rgba(220,230,255,0.95)';
-    ctx.lineWidth = 2.2 * dpr;
-    ctx.stroke();
-
-    // Title / label (subtle)
-    ctx.font = `${Math.round(14*dpr)}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter`;
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.textAlign = 'right';
-    ctx.fillText(`sinc(kx),  k ≈ ${k.toFixed(1)}`, w - 12*dpr, h - 14*dpr);
+  // Map logical (x,y) -> pixels, with x=0 at originPx
+  function toPx(x, y) {
+    const usableW = w - originPx - PAD * dpr;       // keep some right padding
+    const px = originPx + (x / Xmax) * usableW;
+    const py = h/2 - y * (h * Yscale);
+    return [px, py];
   }
+
+  // Trace y = sin(kx)/x from EPS..Xend
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  // Outer glow stroke
+  ctx.strokeStyle = 'rgba(160,185,255,0.20)';
+  ctx.lineWidth = 6 * dpr;
+
+  const steps = Math.max(900, Math.floor((w/dpr) * 0.9));
+  ctx.beginPath();
+  let tipPx = [originPx, h/2]; // will update to last point for the tip marker
+
+  for (let i = 0; i <= steps; i++) {
+    const x = EPS + (Xend - EPS) * (i / steps);
+    const denom = Math.max(x, EPS);        // guard near 0
+    const y = Math.sin(k * x) / denom;
+
+    // Optional apodization toward the current end to keep it elegant
+    const fade = 0.92 + 0.08 * Math.cos(Math.min(1, (Xend - x) / (Xmax) ) * Math.PI);
+    const [px, py] = toPx(x, y * fade);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    if (i === steps) tipPx = [px, py];
+  }
+  ctx.stroke();
+
+  // Core stroke
+  ctx.strokeStyle = 'rgba(220,230,255,0.95)';
+  ctx.lineWidth = 2.2 * dpr;
+  ctx.stroke();
+
+  // Glowing tip marker
+  const [tx, ty] = tipPx;
+  const r = 5 * dpr;
+  const grad = ctx.createRadialGradient(tx, ty, 0, tx, ty, 18 * dpr);
+  grad.addColorStop(0, 'rgba(220,230,255,0.95)');
+  grad.addColorStop(1, 'rgba(220,230,255,0.0)');
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(tx, ty, 18 * dpr, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = 'rgba(240,245,255,0.95)';
+  ctx.beginPath();
+  ctx.arc(tx, ty, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Label
+  ctx.font = `${Math.round(14*dpr)}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter`;
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.textAlign = 'right';
+  ctx.fillText(`y = sin(kx)/x,  k ≈ ${k.toFixed(1)}`, w - 12*dpr, h - 14*dpr);
+}
+
 
   // Animate for a short duration, then fade out
   const DURATION_MS = 2400; // total animation time
