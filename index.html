@@ -205,7 +205,7 @@ function drawFrame(tNorm) {
   const ease = x => x<0.5 ? 2*x*x : 1 - Math.pow(-2*x+2,2)/2;
 
   // k(t): keep your chosen direction (normal or reversed)
-  const kMin = 2, kMax = 90;
+  const kMin = 2, kMax = 50;
   const k = kMin + ease(Math.min(1, tNorm)) * (kMax - kMin);
 
   // Logical domain is [0, Xmax]; we trace from EPS to X(t)
