@@ -205,7 +205,7 @@ function drawFrame(tNorm) {
   const ease = x => x<0.5 ? 2*x*x : 1 - Math.pow(-2*x+2,2)/2;
 
   // k(t): tighten/relax — keep your chosen direction or reverse if you want
-  const kMin = 2, kMax = 90;
+  const kMin = 2, kMax = 40;
   const k = kMin + ease(Math.min(1, tNorm)) * (kMax - kMin);
 
   // Trace progress: from EPS to Xend
