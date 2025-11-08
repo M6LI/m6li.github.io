@@ -129,33 +129,6 @@
     height: 100vh;
     display: block;
   }
-<!-- Fullscreen Intro Animation Overlay -->
-<div id="intro" aria-hidden="true">
-  <canvas id="intro-canvas"></canvas>
-  <button id="intro-skip" aria-label="Skip intro">Skip</button>
-</div>
-
-<style>
-  #intro {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background: radial-gradient(1100px 700px at 50% 35%, #0d0f1a 0%, #05060b 55%, #000 100%);
-    display: grid;
-    place-items: center;
-    opacity: 1;
-    transition: opacity 500ms ease;
-  }
-  #intro.fade-out {
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  #intro-canvas {
-    width: 100vw;
-    height: 100vh;
-    display: block;
-  }
 
   #intro-skip {
     position: absolute;
@@ -202,8 +175,7 @@
   window.addEventListener('resize', resize, { passive: true });
 
   // --- Animation parameters ---
-  const DURATION_MS = 2600; // extended a bit for smoother motion
-  const HOLD_MS     = 500;  // short hold on final frame
+  const DURATION_MS = 2800;    // until highlight reaches right
   const N_POINTS    = 420;
   const points      = [];
 
@@ -214,22 +186,21 @@
       : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
-  // Gaussian-like solution profile u(x)
-  // x in [0,1], centered bump, smooth, PDE-ish
+  // Sharper, higher Gaussian-like bump (x in [0,1])
   function uCurve(x) {
     const mu = 0.5;
-    const sigma = 0.17; // controls width
+    const sigma = 0.10; // lower variance -> narrower
     const gauss = Math.exp(-Math.pow(x - mu, 2) / (2 * sigma * sigma));
-    // base level + scaled Gaussian bump
-    return 0.62 - 0.18 * gauss; // slight "well" shape; flip sign for peak if preferred
+    // baseline + strong peak
+    return 0.55 + 0.28 * gauss; // taller, centered Gaussian bump
   }
 
-  // Initialize random "collocation" points
+  // Initialize random collocation-style points
   function initPoints() {
     points.length = 0;
     for (let i = 0; i < N_POINTS; i++) {
-      const x0 = Math.random();          // [0,1]
-      const y0 = Math.random();          // [0,1]
+      const x0 = Math.random();
+      const y0 = Math.random();
       const targetY = uCurve(x0);
       points.push({
         x0,
@@ -245,7 +216,7 @@
   function draw(tNormRaw) {
     const w = canvas.width;
     const h = canvas.height;
-    const t = Math.min(1, Math.max(0, tNormRaw));
+    const t = Math.max(0, Math.min(1, tNormRaw));
     const s = easeInOutCubic(t);
 
     ctx.setTransform(1,0,0,1,0,0);
@@ -286,10 +257,10 @@
     }
     ctx.restore();
 
-    // Final smooth curve
+    // Smooth Gaussian curve
     ctx.save();
-    ctx.lineWidth = 2.2 * dpr;
-    ctx.strokeStyle = "rgba(220,230,255," + (0.18 + 0.78 * s) + ")";
+    ctx.lineWidth = 2.4 * dpr;
+    ctx.strokeStyle = "rgba(220,230,255," + (0.20 + 0.78 * s) + ")";
     ctx.beginPath();
     const steps = 260;
     for (let i = 0; i <= steps; i++) {
@@ -303,36 +274,37 @@
     ctx.stroke();
     ctx.restore();
 
-    // Traveling glow along curve
-    if (t > 0.12) {
-      const g = (t - 0.12) / 0.78;
+    // Traveling highlight: starts left, ends right at t=1
+    // When this reaches the right edge (gg → 1), we trigger fade-out in loop()
+    const HIGHLIGHT_START = 0.12;
+    if (t > HIGHLIGHT_START) {
+      const g  = (t - HIGHLIGHT_START) / (1 - HIGHLIGHT_START);
       const gg = Math.max(0, Math.min(1, g));
-      const pos = gg * 0.8 + 0.08;
+      const pos = 0.05 + 0.9 * gg; // from 5% to 95% of width
+
       const x = pos;
       const y = uCurve(x);
       const px = x * w;
       const py = y * h;
 
-      const grad = ctx.createRadialGradient(px, py, 0, px, py, 34 * dpr);
-      grad.addColorStop(0, "rgba(235,240,255,0.9)");
+      const grad = ctx.createRadialGradient(px, py, 0, px, py, 40 * dpr);
+      grad.addColorStop(0, "rgba(235,240,255,0.95)");
       grad.addColorStop(1, "rgba(235,240,255,0.0)");
       ctx.fillStyle = grad;
       ctx.beginPath();
-      ctx.arc(px, py, 34 * dpr, 0, Math.PI * 2);
+      ctx.arc(px, py, 40 * dpr, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Equation in bottom-right (fades in)
-    const textAlpha = Math.max(0, Math.min(1, (t - 0.3) / 0.45));
+    // Equation in bottom-right (fades in smoothly)
+    const textAlpha = Math.max(0, Math.min(1, (t - 0.3) / 0.4));
     if (textAlpha > 0) {
       ctx.save();
       ctx.textAlign = "right";
       ctx.font = `${Math.round(18 * dpr)}px system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif`;
       ctx.fillStyle = `rgba(220,230,255,${0.85 * textAlpha})`;
-      const margin = 20 * dpr;
-      const x = w - margin;
-      const y = h - margin;
-      ctx.fillText("∂ₜu = ∇·(a(x)∇u) + f(u)", x, y);
+      const margin = 22 * dpr;
+      ctx.fillText("∂ₜu = ∇·(a(x)∇u) + f(u)", w - margin, h - margin);
       ctx.restore();
     }
   }
@@ -344,12 +316,14 @@
     if (!startTime) startTime = ts;
     const elapsed = ts - startTime;
     const tNorm = elapsed / DURATION_MS;
+    const tClamped = Math.min(1, tNorm);
 
-    draw(tNorm);
+    draw(tClamped);
 
-    if (elapsed < DURATION_MS + HOLD_MS && !finished) {
+    if (tNorm < 1 && !finished) {
       raf = requestAnimationFrame(loop);
     } else if (!finished) {
+      // Highlight has reached the right side → fade out
       finished = true;
       overlay.classList.add('fade-out');
       setTimeout(() => {
@@ -375,6 +349,7 @@
   }, { passive: true });
 })();
 </script>
+
 
 
 
