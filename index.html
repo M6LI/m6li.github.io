@@ -102,24 +102,27 @@
     </tbody></table>
 
     <!-- Fullscreen Intro Animation Overlay -->
+<!-- Fullscreen Intro Animation Overlay -->
 <div id="intro" aria-hidden="true">
   <canvas id="intro-canvas"></canvas>
   <button id="intro-skip" aria-label="Skip intro">Skip</button>
 </div>
 
 <style>
-  /* Overlay fills the viewport and sits above everything */
   #intro {
     position: fixed;
     inset: 0;
     z-index: 9999;
-    background: radial-gradient(1200px 800px at 50% 40%, #0b0b12 0%, #05050a 60%, #000 100%);
+    background: radial-gradient(1100px 700px at 50% 35%, #0d0f1a 0%, #05060b 55%, #000 100%);
     display: grid;
     place-items: center;
     opacity: 1;
-    transition: opacity 600ms ease;
+    transition: opacity 500ms ease;
   }
-  #intro.fade-out { opacity: 0; pointer-events: none; }
+  #intro.fade-out {
+    opacity: 0;
+    pointer-events: none;
+  }
 
   #intro-canvas {
     width: 100vw;
@@ -131,20 +134,20 @@
     position: absolute;
     top: 16px;
     right: 16px;
-    padding: 8px 12px;
+    padding: 8px 14px;
     border: 0;
     border-radius: 999px;
     background: rgba(255,255,255,0.08);
     color: #f4f6ff;
     backdrop-filter: blur(6px);
     cursor: pointer;
-    font: 500 14px/1 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
-    transition: background 200ms ease, transform 100ms ease;
+    font: 500 13px/1 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+    letter-spacing: 0.02em;
+    transition: background 180ms ease, transform 90ms ease, opacity 200ms ease;
   }
-  #intro-skip:hover { background: rgba(255,255,255,0.15); }
+  #intro-skip:hover { background: rgba(255,255,255,0.16); }
   #intro-skip:active { transform: translateY(1px); }
 
-  /* Respect reduced motion: skip immediately */
   @media (prefers-reduced-motion: reduce) {
     #intro { display: none !important; }
   }
@@ -162,166 +165,178 @@
   let raf = null;
 
   function resize() {
-    dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
     const { innerWidth: w, innerHeight: h } = window;
+    dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
     canvas.width  = Math.floor(w * dpr);
     canvas.height = Math.floor(h * dpr);
   }
 
   resize();
   window.addEventListener('resize', resize, { passive: true });
-  
-const EPS = 1e-3;        // start right of 0 to avoid singularity
-const PAD = 64;          // px padding (device-independent)
-const VIEW_SPAN = 12;    // logical x-units visible at once (zoom level)
-const FOLLOW_PCT = 0.40; // keep the tip ~40% from the left of the view
-let camX = 0;            // camera left-edge in logical x
 
+  // --- Animation parameters ---
+  const DURATION_MS = 1800;  // particles flow-in
+  const HOLD_MS     = 400;   // short hold on final frame
+  const N_POINTS    = 420;
+  const points      = [];
 
-  // Map logical x-domain to pixels. We choose a domain that scales with aspect.
-function drawFrame(tNorm) {
-  const w = canvas.width, h = canvas.height;
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0,0,w,h);
-
-  // Subtle glow grid (screen-space, so it feels like the curve moves through it)
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-  ctx.lineWidth = 1;
-  const gridStep = Math.round(64 * dpr);
-  ctx.beginPath();
-  for (let x = 0; x <= w; x += gridStep) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
-  for (let y = 0; y <= h; y += gridStep) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
-  ctx.stroke();
-
-  // X-axis only (center). Avoid drawing a y-axis since camera scrolls in x.
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 1.25 * dpr;
-  ctx.beginPath();
-  ctx.moveTo(0, h/2); ctx.lineTo(w, h/2);
-  ctx.stroke();
-
-  // Easing
-  const ease = x => x<0.5 ? 2*x*x : 1 - Math.pow(-2*x+2,2)/2;
-
-  // k(t): tighten/relax — keep your chosen direction or reverse if you want
-  const kMin = 2, kMax = 40;
-  const k = kMin + ease(Math.min(1, tNorm)) * (kMax - kMin);
-
-  // Trace progress: from EPS to Xend
-  const Xmax = 40; // overall distance to trace (increase if you want to travel farther)
-  const progress = ease(Math.min(1, tNorm));
-  const Xend = EPS + progress * (Xmax - EPS);
-
-  // Camera follow (lerp toward target so it’s smooth)
-  const targetCam = Math.max(0, Xend - VIEW_SPAN * FOLLOW_PCT);
-  camX += (targetCam - camX) * 0.08; // follow stiffness; smaller = lazier camera
-
-  // Mapping world (x,y) -> screen px using camera and a fixed span
-  const leftPx = PAD * dpr;
-  const rightPx = w - PAD * dpr;
-  const usableW = Math.max(1, rightPx - leftPx);
-  const Yscale = 0.42;
-
-  const viewLeft = camX;
-  const viewRight = camX + VIEW_SPAN;
-
-  function toPx(x, y) {
-    const px = leftPx + ((x - viewLeft) / (viewRight - viewLeft)) * usableW;
-    const py = h/2 - y * (h * Yscale);
-    return [px, py];
+  // Smooth ease
+  function easeInOutCubic(t) {
+    return t < 0.5
+      ? 4 * t * t * t
+      : 1 - Math.pow(-2 * t + 2, 3) / 2;
   }
 
-  // Only draw the visible segment [max(EPS, viewLeft), min(Xend, viewRight)]
-  const segL = Math.max(EPS, viewLeft);
-  const segR = Math.min(Xend, viewRight);
+  // Target PDE-like curve u(x): smooth "solution profile"
+  function uCurve(x) {
+    // x in [0,1]
+    const xc = x - 0.5;
+    const bump = Math.exp(-18 * xc * xc);
+    return 0.52 + 0.16 * Math.sin(3.2 * Math.PI * x) * bump;
+  }
 
-  if (segR > segL) {
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
+  // Initialize random collocation-style points
+  function initPoints() {
+    points.length = 0;
+    for (let i = 0; i < N_POINTS; i++) {
+      const x0 = Math.random();           // [0,1]
+      const y0 = Math.random();           // [0,1]
+      const targetY = uCurve(x0);
+      points.push({
+        x0,
+        y0,
+        tx: x0,
+        ty: targetY,
+        jitter: (Math.random() - 0.5) * 0.012
+      });
+    }
+  }
+  initPoints();
 
-    // Outer glow
-    ctx.strokeStyle = 'rgba(160,185,255,0.20)';
-    ctx.lineWidth = 6 * dpr;
+  function draw(tNormRaw) {
+    const w = canvas.width;
+    const h = canvas.height;
+    const t = Math.min(1, Math.max(0, tNormRaw));
+    const s = easeInOutCubic(t);
 
-    const steps = Math.max(600, Math.floor((w/dpr) * 0.8));
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle analytic "field" in the background
+    const cx = w * 0.52;
+    const cy = h * 0.46;
+    const maxR = Math.hypot(w, h);
+    const rings = 9;
+    ctx.lineWidth = 1 * dpr;
+    ctx.strokeStyle = "rgba(140,160,220,0.05)";
+    for (let i = 1; i <= rings; i++) {
+      const rr = (i / rings) * maxR * 0.5;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rr, rr * 0.7, 0.18, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Discrete collocation points flowing to the curve
+    ctx.save();
+    for (let i = 0; i < N_POINTS; i++) {
+      const p = points[i];
+      const x = p.x0 + (p.tx - p.x0) * s;
+      const y = p.y0 + (p.ty - p.y0) * s + p.jitter * (1 - s);
+
+      const px = x * w;
+      const py = y * h;
+
+      const alpha = 0.16 + 0.5 * s;
+      const radius = (1.2 + 1.8 * s) * dpr;
+
+      ctx.fillStyle = `rgba(190,205,255,${alpha})`;
+      ctx.beginPath();
+      ctx.arc(px, py, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Highlight the final PDE curve (as solution learned by PINN)
+    ctx.save();
+    ctx.lineWidth = 2.2 * dpr;
+    ctx.strokeStyle = "rgba(220,230,255," + (0.15 + 0.75 * s) + ")";
     ctx.beginPath();
-    let tipPx = [leftPx, h/2];
-
+    const steps = 260;
     for (let i = 0; i <= steps; i++) {
-      const x = segL + (segR - segL) * (i / steps);
-      const denom = Math.max(x, EPS);
-      const y = Math.sin(k * x) / denom;
-
-      // Gentle fade near the right edge so new samples blend in
-      const edge = (segR - x) / (VIEW_SPAN * 0.25);
-      const fade = edge < 1 ? (0.92 + 0.08 * Math.max(0, Math.cos(edge * Math.PI))) : 1;
-
-      const [px, py] = toPx(x, y * fade);
-      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-      if (i === steps) tipPx = [px, py];
+      const x = i / steps;
+      const y = uCurve(x);
+      const px = x * w;
+      const py = y * h;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
     ctx.stroke();
+    ctx.restore();
 
-    // Core stroke
-    ctx.strokeStyle = 'rgba(220,230,255,0.95)';
-    ctx.lineWidth = 2.2 * dpr;
-    ctx.stroke();
+    // Glow traveling along the curve (subtle, short)
+    if (t > 0.15) {
+      const g = (t - 0.15) / 0.75;
+      const gg = Math.min(1, Math.max(0, g));
+      const pos = gg * 0.82 + 0.06;
+      const x = pos;
+      const y = uCurve(x);
+      const px = x * w;
+      const py = y * h;
 
-    // Tip marker (glow + core dot)
-    const [tx, ty] = tipPx;
-    const r = 5 * dpr;
-    const grad = ctx.createRadialGradient(tx, ty, 0, tx, ty, 18 * dpr);
-    grad.addColorStop(0, 'rgba(220,230,255,0.95)');
-    grad.addColorStop(1, 'rgba(220,230,255,0.0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(tx, ty, 18 * dpr, 0, Math.PI * 2);
-    ctx.fill();
+      const grad = ctx.createRadialGradient(px, py, 0, px, py, 34 * dpr);
+      grad.addColorStop(0, "rgba(235,240,255,0.9)");
+      grad.addColorStop(1, "rgba(235,240,255,0.0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(px, py, 34 * dpr, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    ctx.fillStyle = 'rgba(240,245,255,0.95)';
-    ctx.beginPath();
-    ctx.arc(tx, ty, r, 0, Math.PI * 2);
-    ctx.fill();
+    // Equation + label fade in
+    const textAlpha = Math.max(0, Math.min(1, (t - 0.25) / 0.4));
+    if (textAlpha > 0) {
+      ctx.save();
+      ctx.fillStyle = `rgba(230,235,255,${0.82 * textAlpha})`;
+      ctx.textAlign = "center";
+
+      ctx.font = `${Math.round(22 * dpr)}px system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif`;
+      ctx.fillText("∂ₜu = ∇·(a(x)∇u) + f(u)", w / 2, h * 0.34);
+
+      ctx.font = `${Math.round(14 * dpr)}px system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif`;
+      ctx.fillStyle = `rgba(190,200,255,${0.75 * textAlpha})`;
+      ctx.fillText("PDEs · Analysis · Physics-Informed Neural Networks", w / 2, h * 0.34 + 26 * dpr);
+
+      ctx.restore();
+    }
   }
 
-  // Label
-  ctx.font = `${Math.round(14*dpr)}px ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter`;
-  ctx.fillStyle = 'rgba(255,255,255,0.6)';
-  ctx.textAlign = 'right';
-  ctx.fillText(`y = sin(kx)/x  ·  k ≈ ${k.toFixed(1)}`, w - 12*dpr, h - 14*dpr);
-}
-
-
-  // Animate for a short duration, then fade out
-  const DURATION_MS = 2000; // total animation time
-  const HOLD_MS = 400;      // brief hold before fade
   let startTime = null;
   let finished = false;
 
   function loop(ts) {
     if (!startTime) startTime = ts;
     const elapsed = ts - startTime;
-    const tNorm = Math.min(1, elapsed / DURATION_MS);
-    drawFrame(tNorm);
+    const tNorm = elapsed / DURATION_MS;
+
+    draw(tNorm);
 
     if (elapsed < DURATION_MS + HOLD_MS && !finished) {
       raf = requestAnimationFrame(loop);
     } else if (!finished) {
       finished = true;
       overlay.classList.add('fade-out');
-      // Remove from DOM after transition ends to free memory
       setTimeout(() => {
         cancelAnimationFrame(raf);
         window.removeEventListener('resize', resize);
         overlay.remove();
-      }, 650);
+      }, 520);
     }
   }
 
   raf = requestAnimationFrame(loop);
 
-  // Skip handler
+  // Skip button
   skipBtn.addEventListener('click', () => {
     if (finished) return;
     finished = true;
@@ -330,10 +345,11 @@ function drawFrame(tNorm) {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
       overlay.remove();
-    }, 300);
+    }, 260);
   }, { passive: true });
 })();
 </script>
+
 
   </body>
 </html>
