@@ -2,9 +2,7 @@
 <html lang="en">
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-
     <title>Muhammed Ali Mehmood</title>
-
     <meta name="author" content="Muhammed Ali Mehmood">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="shortcut icon" href="images/profile.jpg" type="image/jpeg">
@@ -93,12 +91,18 @@
 
 <div id="intro" aria-hidden="true">
   <canvas id="intro-canvas"></canvas>
-  <div id="intro-text">
-    <span class="equation">∂<sub>t</sub>ρ + ∇·(ρu) = 0</span>
-    <span class="sub-equation">p(ρ) ~ (ρ* - ρ)<sup>-γ</sup></span>
-    <span class="label">Compressible Congestion Dynamics</span>
+  <div id="intro-ui">
+    <div class="pinn-status">
+      <span class="loss-equation">
+        <span class="math-term">Minimizing:</span> 
+        <span class="math-var">MSE<sub>data</sub></span> + 
+        <span class="math-var">|| ∂<sub>t</sub>u + u∂<sub>x</sub>u - ν∂<sub>xx</sub>u ||<sup>2</sup></span>
+      </span>
+      <div class="progress-bar"><div class="fill"></div></div>
+      <span class="epoch-counter">Training...</span>
+    </div>
   </div>
-  <button id="intro-skip" aria-label="Skip intro">Skip</button>
+  <button id="intro-skip">Initialize</button>
 </div>
 
 <style>
@@ -106,12 +110,11 @@
     position: fixed;
     inset: 0;
     z-index: 9999;
-    /* Dark background */
-    background-color: #020204;
+    background-color: #08090d; /* Deep Neural Black */
     display: grid;
     place-items: center;
     opacity: 1;
-    transition: opacity 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: opacity 600ms ease;
   }
   #intro.fade-out {
     opacity: 0;
@@ -127,68 +130,82 @@
     display: block;
   }
 
-  #intro-text {
+  #intro-ui {
     position: absolute;
-    bottom: 40px;
-    left: 40px;
+    bottom: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .pinn-status {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
-    pointer-events: none;
-    mix-blend-mode: screen;
+    align-items: center;
+    gap: 10px;
   }
 
-  .equation {
-    font-family: 'Times New Roman', Times, serif;
-    font-style: italic;
-    font-size: 2.2rem;
-    color: rgba(220, 230, 255, 0.95);
-    opacity: 0;
-    transform: translateY(10px);
-    animation: fadeInUp 0.8s ease forwards 0.2s;
+  .loss-equation {
+    font-family: 'Courier New', monospace;
+    font-size: 0.95rem;
+    color: #64748b;
+    letter-spacing: -0.5px;
   }
-  
-  .sub-equation {
-    font-family: 'Times New Roman', Times, serif;
-    font-size: 1.1rem;
-    color: rgba(180, 200, 230, 0.7);
-    opacity: 0;
-    transform: translateY(10px);
-    animation: fadeInUp 0.8s ease forwards 0.4s;
+  .math-term { color: #94a3b8; margin-right: 8px; font-weight: bold; }
+  .math-var { color: #e2e8f0; }
+
+  .progress-bar {
+    width: 200px;
+    height: 2px;
+    background: rgba(255,255,255,0.1);
+    position: relative;
+    overflow: hidden;
+    border-radius: 2px;
+  }
+  .progress-bar .fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background: #38bdf8; /* Cyan */
+    animation: loadProgress 2.2s ease-out forwards;
   }
 
-  .label {
-    margin-top: 4px;
-    font-family: system-ui, -apple-system, sans-serif;
+  .epoch-counter {
+    font-family: system-ui, sans-serif;
     font-size: 0.75rem;
     text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: rgba(100, 130, 180, 0.6);
-    opacity: 0;
-    transform: translateY(10px);
-    animation: fadeInUp 0.8s ease forwards 0.5s;
+    letter-spacing: 0.1em;
+    color: #475569;
   }
 
-  @keyframes fadeInUp {
-    to { opacity: 1; transform: translateY(0); }
+  @keyframes loadProgress {
+    0% { width: 0%; }
+    100% { width: 100%; }
   }
 
   #intro-skip {
     position: absolute;
     top: 24px;
     right: 24px;
-    padding: 8px 16px;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 99px;
-    background: rgba(255,255,255,0.05);
-    color: #aab;
+    padding: 8px 18px;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 4px;
+    background: rgba(15, 23, 42, 0.8);
+    color: #94a3b8;
     backdrop-filter: blur(4px);
     cursor: pointer;
-    font: 500 12px/1 system-ui, sans-serif;
-    transition: all 0.2s ease;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    transition: all 0.2s;
   }
-  #intro-skip:hover { background: rgba(255,255,255,0.15); color: #fff; }
+  #intro-skip:hover {
+    border-color: #38bdf8;
+    color: #38bdf8;
+  }
 
   @media (prefers-reduced-motion: reduce) {
     #intro { display: none !important; }
@@ -200,19 +217,46 @@
   const overlay = document.getElementById('intro');
   const canvas  = document.getElementById('intro-canvas');
   const skipBtn = document.getElementById('intro-skip');
+  const epochTxt= document.querySelector('.epoch-counter');
   if (!overlay || !canvas) return;
 
   const ctx = canvas.getContext('2d', { alpha: false });
   let w, h, dpr;
   let raf = null;
   
-  // --- Config ---
-  const PARTICLE_COUNT = 3000;
-  const DURATION_MS    = 2200; // Fast: 2.2 seconds total
-  
-  // Particles array
-  // Format: [x, y, speed_offset, unique_id]
-  const particles = new Float32Array(PARTICLE_COUNT * 4); 
+  // --- PINN VISUALIZATION CONFIG ---
+  const NODE_COUNT = 180;    // Number of neurons/collocation points
+  const DURATION   = 2400;   // 2.4 seconds
+  const CONNECT_DIST = 100;  // Max distance to draw a "synapse" line
+
+  // The nodes
+  const nodes = [];
+
+  // 1. Initialize Nodes (Random Initialization)
+  function initNodes() {
+    nodes.length = 0;
+    for (let i = 0; i < NODE_COUNT; i++) {
+      // Start: Random scatter (High Entropy/Loss)
+      const startX = Math.random() * w;
+      const startY = Math.random() * h;
+      
+      // Target: The "Solution" (Shockwave / Tanh profile)
+      // A steep hyperbolic tangent representing a shock front
+      const normalizedX = (startX / w) - 0.5; // -0.5 to 0.5
+      // The curve: Center of screen + amplitude * tanh(slope * x)
+      const targetY = (h * 0.5) - (h * 0.35) * Math.tanh(8 * normalizedX); 
+
+      nodes.push({
+        x: startX,
+        y: startY,
+        startX: startX,
+        startY: startY,
+        targetX: startX, // X stays roughly same to show 1D function mapping
+        targetY: targetY,
+        bias: Math.random() * 0.2 // Slight variation in arrival time
+      });
+    }
+  }
 
   function resize() {
     w = window.innerWidth;
@@ -221,102 +265,116 @@
     canvas.width  = w * dpr;
     canvas.height = h * dpr;
     ctx.scale(dpr, dpr);
-    
-    // Init particles randomly, mostly to left to feed the flow
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      particles[i * 4 + 0] = Math.random() * w; // x
-      particles[i * 4 + 1] = Math.random() * h; // y
-      particles[i * 4 + 2] = 0.8 + Math.random() * 0.4; // random speed variance
-      particles[i * 4 + 3] = Math.random(); // random phase
-    }
+    initNodes();
   }
   resize();
   window.addEventListener('resize', resize);
 
-  // --- The Math: Compressible Flow / Shock Model ---
-  // We model a "density field" rho(x, t) that has a shockwave.
-  // u(x) = u_max * (1 - rho/rho_max)  <-- classic traffic relation
-  
+  // Easing for neural convergence (exponential slide)
+  function easeOutExpo(x) {
+    return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+  }
+
   let startTime = null;
   let isFinished = false;
 
   function loop(timestamp) {
     if (!startTime) startTime = timestamp;
     const elapsed = timestamp - startTime;
-    const t = elapsed / DURATION_MS; // 0 to 1
+    let progress = Math.min(1, elapsed / DURATION);
     
-    // Clear screen (slight trail for speed perception)
-    ctx.fillStyle = "rgba(2, 4, 8, 0.3)";
-    ctx.fillRect(0, 0, w, h);
-    
-    ctx.lineWidth = 1.5;
-    
-    // Calculate Shock Position (Moving backwards or creating a jam)
-    // Shock starts at right (1.0) and moves left (upstream) to 0.4
-    const shockX = w * (0.9 - 0.4 * (1 - Math.exp(-t * 5))); 
-    
-    // Render Particles
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      const idx = i * 4;
-      let x = particles[idx];
-      let y = particles[idx + 1];
-      const speedVar = particles[idx + 2];
-      
-      // -- PHYSICS APPROXIMATION --
-      
-      // Calculate local density proxy based on X position relative to shock
-      // Using a sigmoid function to represent the shock front thickness
-      const distToShock = x - shockX;
-      // High density if x > shockX (congested), Low if x < shockX (free)
-      // "Hard congestion" = Sharp transition
-      const sigmoid = 1 / (1 + Math.exp(-distToShock * 0.05)); 
-      
-      // Velocity Model: u = u_free * (1 - density)
-      // If density is high (sigmoid -> 1), velocity -> 0
-      const baseSpeed = 15 * speedVar; 
-      const velocityX = baseSpeed * (1 - 0.95 * sigmoid); 
-      
-      // Update Position
-      x += velocityX;
-      
-      // Reset if off screen right
-      if (x > w) {
-        x = 0;
-        y = Math.random() * h;
-      }
-      
-      particles[idx] = x;
-      
-      // -- VISUALIZATION --
-      // Color maps to Density/Compression.
-      // Free flow = Blue/Cyan. Congested = Red/White/Orange.
-      
-      let r, g, b, a;
-      
-      if (sigmoid < 0.3) {
-        // Free flow (Blue/Cyan)
-        r = 50; g = 180; b = 255;
-        a = 0.4;
-      } else {
-        // Congested / Shock (Red/Orange/White)
-        // As they hit the wall, they get "hotter"
-        const intensity = sigmoid;
-        r = 255; 
-        g = 50 + (1-intensity)*150; 
-        b = 50 + (1-intensity)*200;
-        a = 0.8 * intensity;
-      }
-      
-      // Draw particle as a short streak aligned with flow
-      ctx.beginPath();
-      ctx.strokeStyle = `rgba(${r},${g},${b},${a})`;
-      ctx.moveTo(x, y);
-      ctx.lineTo(x - (velocityX * 2 + 1), y); // Trail length based on speed
-      ctx.stroke();
+    // Non-linear time for visual "snap" effect
+    // It stays chaotic for a bit, then snaps to solution
+    const snap = easeOutExpo(progress);
+
+    // Update Text
+    if (epochTxt && progress < 1) {
+      epochTxt.innerText = `Epoch ${Math.floor(progress * 1000)} / 1000`;
+    } else if (epochTxt) {
+      epochTxt.innerText = "Converged. Loss: 1.2e-6";
+      epochTxt.style.color = "#38bdf8"; // Cyan
     }
 
-    // Finish Condition
-    if (elapsed < DURATION_MS && !isFinished) {
+    // --- DRAWING ---
+    // Background: Dark with faint grid (coordinate system)
+    ctx.fillStyle = "#08090d";
+    ctx.fillRect(0, 0, w, h);
+
+    // Draw Grid (Faint)
+    ctx.strokeStyle = "rgba(255,255,255,0.03)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for(let i=0; i<w; i+=80) { ctx.moveTo(i,0); ctx.lineTo(i,h); }
+    for(let j=0; j<h; j+=80) { ctx.moveTo(0,j); ctx.lineTo(w,j); }
+    ctx.stroke();
+
+    // Update Nodes
+    // We calculate "Loss" to determine color. 
+    // Loss = Distance from current Y to Target Y.
+    
+    ctx.lineWidth = 1;
+    
+    // Draw Connections (Synapses) first
+    // Only connect if they are close
+    ctx.beginPath();
+    for (let i = 0; i < NODE_COUNT; i++) {
+      const n = nodes[i];
+      // Move node
+      const currentSnap = Math.max(0, snap - n.bias * 0.2); // Add randomness to movement
+      n.x = n.startX + (n.targetX - n.startX) * currentSnap;
+      n.y = n.startY + (n.targetY - n.startY) * currentSnap;
+      
+      // Look ahead for neighbors to connect
+      // Optimization: Only check next few nodes to save CPU
+      for (let j = i + 1; j < NODE_COUNT; j++) {
+        const n2 = nodes[j];
+        const dx = n.x - n2.x;
+        const dy = n.y - n2.y;
+        const distSq = dx*dx + dy*dy;
+        
+        if (distSq < CONNECT_DIST * CONNECT_DIST) {
+          // Opacity based on distance
+          const alpha = 1 - Math.sqrt(distSq) / CONNECT_DIST;
+          // Color based on convergence (Time)
+          // Starts Red (chaos), Ends Cyan (Structure)
+          ctx.strokeStyle = `rgba(${255 - snap*255}, ${50 + snap*200}, ${255}, ${alpha * 0.15})`;
+          ctx.moveTo(n.x, n.y);
+          ctx.lineTo(n2.x, n2.y);
+        }
+      }
+    }
+    ctx.stroke();
+
+    // Draw Nodes (Neurons)
+    for (let i = 0; i < NODE_COUNT; i++) {
+      const n = nodes[i];
+      
+      // Calculate "Error" (Distance to target)
+      const error = Math.abs(n.y - n.targetY);
+      const normalizedError = Math.min(1, error / (h/4));
+
+      // Color logic: 
+      // High Error (Start) = Red/Orange (#f59e0b)
+      // Low Error (End) = Cyan/White (#38bdf8)
+      
+      let r, g, b;
+      if (snap < 0.8) {
+        // Training phase colors
+        r = 255; 
+        g = 50 + (1-normalizedError)*100; 
+        b = 50; 
+      } else {
+        // Converged phase colors
+        r = 56; g = 189; b = 248; 
+      }
+
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, 2 + (1-normalizedError)*2, 0, Math.PI*2);
+      ctx.fill();
+    }
+
+    if (progress < 1 && !isFinished) {
       raf = requestAnimationFrame(loop);
     } else if (!isFinished) {
       finishAnimation();
