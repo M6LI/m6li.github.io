@@ -10,7 +10,7 @@
   </head>
 
   <body>
-    <table class="container"><tbody>       
+    <table class="container"><tbody>        
       <tr style="padding:0px">
         <td style="padding:0px">
 
@@ -91,18 +91,7 @@
 
 <div id="intro" aria-hidden="true">
   <canvas id="intro-canvas"></canvas>
-  <div id="intro-ui">
-    <div class="pinn-status">
-      <span class="loss-equation">
-        <span class="math-term">Minimizing:</span> 
-        <span class="math-var">MSE<sub>data</sub></span> + 
-        <span class="math-var">|| ∂<sub>t</sub>u + u∂<sub>x</sub>u - ν∂<sub>xx</sub>u ||<sup>2</sup></span>
-      </span>
-      <div class="progress-bar"><div class="fill"></div></div>
-      <span class="epoch-counter">Training...</span>
-    </div>
-  </div>
-  <button id="intro-skip">Initialize</button>
+  <button id="intro-skip">Enter</button>
 </div>
 
 <style>
@@ -110,11 +99,11 @@
     position: fixed;
     inset: 0;
     z-index: 9999;
-    background-color: #08090d; /* Deep Neural Black */
+    background-color: #08090d; /* Neural Black */
     display: grid;
     place-items: center;
     opacity: 1;
-    transition: opacity 600ms ease;
+    transition: opacity 800ms ease;
   }
   #intro.fade-out {
     opacity: 0;
@@ -130,81 +119,29 @@
     display: block;
   }
 
-  #intro-ui {
-    position: absolute;
-    bottom: 50px;
-    left: 50%;
-    transform: translateX(-50%);
-    text-align: center;
-    pointer-events: none;
-    z-index: 2;
-  }
-
-  .pinn-status {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .loss-equation {
-    font-family: 'Courier New', monospace;
-    font-size: 0.95rem;
-    color: #64748b;
-    letter-spacing: -0.5px;
-  }
-  .math-term { color: #94a3b8; margin-right: 8px; font-weight: bold; }
-  .math-var { color: #e2e8f0; }
-
-  .progress-bar {
-    width: 200px;
-    height: 2px;
-    background: rgba(255,255,255,0.1);
-    position: relative;
-    overflow: hidden;
-    border-radius: 2px;
-  }
-  .progress-bar .fill {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 0%;
-    background: #38bdf8; /* Cyan */
-    animation: loadProgress 2.2s ease-out forwards;
-  }
-
-  .epoch-counter {
-    font-family: system-ui, sans-serif;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: #475569;
-  }
-
-  @keyframes loadProgress {
-    0% { width: 0%; }
-    100% { width: 100%; }
-  }
-
   #intro-skip {
     position: absolute;
-    top: 24px;
-    right: 24px;
-    padding: 8px 18px;
-    border: 1px solid rgba(255,255,255,0.15);
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 10px 24px;
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius: 4px;
-    background: rgba(15, 23, 42, 0.8);
-    color: #94a3b8;
+    background: rgba(0, 0, 0, 0.5);
+    color: #64748b;
     backdrop-filter: blur(4px);
     cursor: pointer;
     font-family: 'Courier New', monospace;
-    font-size: 12px;
-    transition: all 0.2s;
+    font-size: 13px;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    z-index: 10;
   }
   #intro-skip:hover {
     border-color: #38bdf8;
     color: #38bdf8;
+    background: rgba(56, 189, 248, 0.05);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -217,43 +154,44 @@
   const overlay = document.getElementById('intro');
   const canvas  = document.getElementById('intro-canvas');
   const skipBtn = document.getElementById('intro-skip');
-  const epochTxt= document.querySelector('.epoch-counter');
   if (!overlay || !canvas) return;
 
   const ctx = canvas.getContext('2d', { alpha: false });
   let w, h, dpr;
   let raf = null;
   
-  // --- PINN VISUALIZATION CONFIG ---
-  const NODE_COUNT = 180;    // Number of neurons/collocation points
-  const DURATION   = 2400;   // 2.4 seconds
-  const CONNECT_DIST = 100;  // Max distance to draw a "synapse" line
+  // --- CONFIG ---
+  const NODE_COUNT = 200;    
+  const DURATION   = 2200;   
+  const CONNECT_DIST = 120;  
 
-  // The nodes
   const nodes = [];
 
-  // 1. Initialize Nodes (Random Initialization)
   function initNodes() {
     nodes.length = 0;
     for (let i = 0; i < NODE_COUNT; i++) {
-      // Start: Random scatter (High Entropy/Loss)
       const startX = Math.random() * w;
       const startY = Math.random() * h;
       
-      // Target: The "Solution" (Shockwave / Tanh profile)
-      // A steep hyperbolic tangent representing a shock front
-      const normalizedX = (startX / w) - 0.5; // -0.5 to 0.5
-      // The curve: Center of screen + amplitude * tanh(slope * x)
-      const targetY = (h * 0.5) - (h * 0.35) * Math.tanh(8 * normalizedX); 
+      // Calculate Gaussian Pulse Target
+      // X range normalized: -0.5 to 0.5
+      const normalizedX = (startX / w) - 0.5;
+      
+      // Gaussian: A * exp( -(x-mu)^2 / 2sigma^2 )
+      // We use a high multiplier on X inside exp to make it sharp
+      // Multiplier 14 creates a distinct sharp pulse
+      const pulse = Math.exp( -Math.pow(normalizedX * 14, 2) );
+      
+      const targetY = (h * 0.8) - (h * 0.6) * pulse; 
 
       nodes.push({
         x: startX,
         y: startY,
         startX: startX,
         startY: startY,
-        targetX: startX, // X stays roughly same to show 1D function mapping
+        targetX: startX, 
         targetY: targetY,
-        bias: Math.random() * 0.2 // Slight variation in arrival time
+        bias: Math.random() * 0.3 // Randomize arrival slightly
       });
     }
   }
@@ -270,9 +208,9 @@
   resize();
   window.addEventListener('resize', resize);
 
-  // Easing for neural convergence (exponential slide)
-  function easeOutExpo(x) {
-    return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+  // Cubic easing for a clean "snap" into place
+  function easeOutCubic(x) {
+    return 1 - Math.pow(1 - x, 3);
   }
 
   let startTime = null;
@@ -283,49 +221,36 @@
     const elapsed = timestamp - startTime;
     let progress = Math.min(1, elapsed / DURATION);
     
-    // Non-linear time for visual "snap" effect
-    // It stays chaotic for a bit, then snaps to solution
-    const snap = easeOutExpo(progress);
-
-    // Update Text
-    if (epochTxt && progress < 1) {
-      epochTxt.innerText = `Epoch ${Math.floor(progress * 1000)} / 1000`;
-    } else if (epochTxt) {
-      epochTxt.innerText = "Converged. Loss: 1.2e-6";
-      epochTxt.style.color = "#38bdf8"; // Cyan
-    }
+    const snap = easeOutCubic(progress);
 
     // --- DRAWING ---
-    // Background: Dark with faint grid (coordinate system)
     ctx.fillStyle = "#08090d";
     ctx.fillRect(0, 0, w, h);
 
-    // Draw Grid (Faint)
-    ctx.strokeStyle = "rgba(255,255,255,0.03)";
+    // Faint Grid
+    ctx.strokeStyle = "rgba(255,255,255,0.02)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    for(let i=0; i<w; i+=80) { ctx.moveTo(i,0); ctx.lineTo(i,h); }
-    for(let j=0; j<h; j+=80) { ctx.moveTo(0,j); ctx.lineTo(w,j); }
+    // Only draw vertical grid lines near the pulse center to focus attention
+    const center = w/2;
+    for(let i=0; i<w; i+=100) { ctx.moveTo(i,0); ctx.lineTo(i,h); }
+    // Horizontal lines
+    for(let j=0; j<h; j+=100) { ctx.moveTo(0,j); ctx.lineTo(w,j); }
     ctx.stroke();
 
-    // Update Nodes
-    // We calculate "Loss" to determine color. 
-    // Loss = Distance from current Y to Target Y.
-    
     ctx.lineWidth = 1;
     
-    // Draw Connections (Synapses) first
-    // Only connect if they are close
+    // Draw Connections
     ctx.beginPath();
     for (let i = 0; i < NODE_COUNT; i++) {
       const n = nodes[i];
-      // Move node
-      const currentSnap = Math.max(0, snap - n.bias * 0.2); // Add randomness to movement
+      
+      // Update position
+      const currentSnap = Math.max(0, Math.min(1, snap - n.bias * 0.2));
       n.x = n.startX + (n.targetX - n.startX) * currentSnap;
       n.y = n.startY + (n.targetY - n.startY) * currentSnap;
       
-      // Look ahead for neighbors to connect
-      // Optimization: Only check next few nodes to save CPU
+      // Connect nearby nodes
       for (let j = i + 1; j < NODE_COUNT; j++) {
         const n2 = nodes[j];
         const dx = n.x - n2.x;
@@ -333,11 +258,9 @@
         const distSq = dx*dx + dy*dy;
         
         if (distSq < CONNECT_DIST * CONNECT_DIST) {
-          // Opacity based on distance
           const alpha = 1 - Math.sqrt(distSq) / CONNECT_DIST;
-          // Color based on convergence (Time)
-          // Starts Red (chaos), Ends Cyan (Structure)
-          ctx.strokeStyle = `rgba(${255 - snap*255}, ${50 + snap*200}, ${255}, ${alpha * 0.15})`;
+          // Pulse Color: Blue/Cyan mix
+          ctx.strokeStyle = `rgba(56, 189, 248, ${alpha * 0.2})`;
           ctx.moveTo(n.x, n.y);
           ctx.lineTo(n2.x, n2.y);
         }
@@ -345,32 +268,23 @@
     }
     ctx.stroke();
 
-    // Draw Nodes (Neurons)
+    // Draw Nodes
     for (let i = 0; i < NODE_COUNT; i++) {
       const n = nodes[i];
       
-      // Calculate "Error" (Distance to target)
-      const error = Math.abs(n.y - n.targetY);
-      const normalizedError = Math.min(1, error / (h/4));
+      // Determine if node is "converged" (close to target)
+      const distToTarget = Math.abs(n.y - n.targetY);
+      const isConverged = distToTarget < 5;
 
-      // Color logic: 
-      // High Error (Start) = Red/Orange (#f59e0b)
-      // Low Error (End) = Cyan/White (#38bdf8)
-      
-      let r, g, b;
-      if (snap < 0.8) {
-        // Training phase colors
-        r = 255; 
-        g = 50 + (1-normalizedError)*100; 
-        b = 50; 
-      } else {
-        // Converged phase colors
-        r = 56; g = 189; b = 248; 
-      }
+      // Color: White core if converged, darker blue if moving
+      const r = isConverged ? 220 : 14; 
+      const g = isConverged ? 240 : 165; 
+      const b = isConverged ? 255 : 233;
+      const a = isConverged ? 1.0 : 0.6;
 
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillStyle = `rgba(${r},${g},${b}, ${a})`;
       ctx.beginPath();
-      ctx.arc(n.x, n.y, 2 + (1-normalizedError)*2, 0, Math.PI*2);
+      ctx.arc(n.x, n.y, isConverged ? 2 : 1.5, 0, Math.PI*2);
       ctx.fill();
     }
 
@@ -387,7 +301,7 @@
     setTimeout(() => {
       cancelAnimationFrame(raf);
       overlay.remove();
-    }, 650);
+    }, 850); // Slight delay to let user see the final pulse shape
   }
 
   raf = requestAnimationFrame(loop);
