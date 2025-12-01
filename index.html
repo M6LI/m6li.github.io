@@ -7,9 +7,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="shortcut icon" href="images/profile.jpg" type="image/jpeg">
     <link rel="stylesheet" type="text/css" href="stylesheet.css">
+    
+    <style>
+      /* 1. Set the background and text color */
+      body {
+        background-color: #08090d; /* Neural Black */
+        color: #cbd5e1; /* Light Slate Gray for readability */
+        margin: 0;
+        font-family: system-ui, -apple-system, sans-serif; 
+      }
+
+      /* 2. Style links to be visible on dark background */
+      a {
+        color: #38bdf8; /* Cyan */
+        text-decoration: none;
+        transition: color 0.2s;
+      }
+      a:hover {
+        color: #7dd3fc;
+        text-decoration: underline;
+      }
+
+      /* 3. Ensure tables are transparent so canvas shows through */
+      table { background: transparent !important; }
+      
+      /* 4. Background Canvas Styling */
+      #background-canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1; /* Puts it behind the text */
+        pointer-events: none; /* Allows you to click text on top of it */
+      }
+
+      /* 5. Intro Overlay (Button only now) */
+      #intro-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background-color: #08090d; /* Initially covers text */
+        display: grid;
+        place-items: center;
+        transition: opacity 1s ease, visibility 1s;
+      }
+      #intro-overlay.fade-out {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      #intro-btn {
+        padding: 10px 24px;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #64748b;
+        backdrop-filter: blur(4px);
+        cursor: pointer;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+        text-transform: uppercase;
+        margin-top: 40vh; /* Push button down slightly */
+      }
+      #intro-btn:hover {
+        border-color: #38bdf8;
+        color: #38bdf8;
+        background: rgba(56, 189, 248, 0.05);
+      }
+    </style>
   </head>
 
   <body>
+
+    <canvas id="background-canvas"></canvas>
+
+    <div id="intro-overlay">
+      <button id="intro-btn">Enter Site</button>
+    </div>
+
     <table class="container"><tbody>        
       <tr style="padding:0px">
         <td style="padding:0px">
@@ -17,7 +96,7 @@
           <table style="width:100%;border:0px;border-spacing:0px;border-collapse:separate;margin-right:auto;margin-left:auto;"><tbody>
             <tr style="padding:0px">
               <td style="padding:2.5%;width:63%;vertical-align:middle">
-                <p class="name" style="text-align: center;">Muhammed Ali Mehmood</p>
+                <p class="name" style="text-align: center; font-size: 1.5rem; font-weight: bold; color: #f1f5f9;">Muhammed Ali Mehmood</p>
                 <p>
                   I am a PhD student in Mathematics at Imperial College London, under the supervision of <a href="https://warwick.ac.uk/fac/sci/maths/people/staff/zatorska/">Prof. Ewelina Zatorska</a>.
                 </p>
@@ -37,33 +116,37 @@
                 </p>
               </td>
               <td style="padding:2.5%;width:37%;max-width:37%">
-                <a href="images/profile.jpg"><img style="width:100%;max-width:100%;object-fit: cover; border-radius: 50%;" alt="profile photo" src="images/profile.jpg" class="hoverZoomLink"></a>
+                <a href="images/profile.jpg"><img style="width:100%;max-width:100%;object-fit: cover; border-radius: 50%; border: 2px solid #334155;" alt="profile photo" src="images/profile.jpg" class="hoverZoomLink"></a>
               </td>
             </tr>
           </tbody></table>
 
           <table style="width:100%;border:0px;margin-top:20px;"><tbody>
             <tr><td style="padding:16px;width:100%;vertical-align:middle">
-              <h2>Research</h2>
+              <h2 style="color: #f1f5f9; border-bottom: 1px solid #334155; padding-bottom: 10px;">Research</h2>
               <ol>
                 <li>
                   <i>Derivation and numerical analysis of novel macroscopic model for congestion dynamics</i><br>
                   With A. Lefebvre-Lepot, C. Perrin and E. Zatorska, <br>
                   (In preparation)
                 </li>
+                <br>
                 <li>
                   <a href="https://arxiv.org/abs/2306.01379"><i>Hard congestion limit of the dissipative Aw-Rascle system with a polynomial offset function</i><br></a>
                   Journal of Mathematical Analysis and Applications 533.1 (2024)
                 </li>
+                <br>
                 <li>
                   <a href="https://arxiv.org/abs/2402.08295"><i>Duality solutions to the hard-congestion model for the dissipative Aw-Rascle system</i><br></a>
                   With N. Chaudhuri, C. Perrin, and E. Zatorska, <br>
                   Communications in Partial Differential Equations (2024)
                 </li>
+                <br>
                 <li>
                   <a href="https://arxiv.org/abs/2404.17406"><i>Stability of partially congested travelling wave solutions for the extended Aw-Rascle system</i><br></a>
                   With É. Deléage, arXiv:2404.17406 (2024)
                 </li>
+                <br>
                 <li>
                   <a href="https://arxiv.org/abs/2404.10431"><i>Analysis of a Navier-Stokes Phase-Field Crystal Model</i><br></a>
                   With C. Cavaterra, M. Grasselli, and R. Voso, <br>
@@ -75,7 +158,7 @@
 
           <table style="width:100%;border:0px;margin-top:20px;"><tbody>
             <tr><td style="padding:16px;width:100%;vertical-align:middle">
-              <h2>Awards</h2>
+              <h2 style="color: #f1f5f9; border-bottom: 1px solid #334155; padding-bottom: 10px;">Awards</h2>
               <ul>
                 <li><a href="https://www.imperial.ac.uk/mathematics/postgraduate/doctoral-programme/current-students/the-doris-chen-phd-award/mobilityfund/">Doris-Chen Mobility Award (2024)</a> – £1000 awarded to exceptional Math PhD students at Imperial College</li>
                 <li><a href="https://www.imperial.ac.uk/mathematics/postgraduate/doctoral-programme/prospective-students/phd-funding-opportunities/">Roth Scholarship (2022)</a> – Full scholarship covering living costs and a stipend during PhD research</li>
@@ -89,79 +172,19 @@
       </tr>
     </tbody></table>
 
-<div id="intro" aria-hidden="true">
-  <canvas id="intro-canvas"></canvas>
-  <button id="intro-skip">Enter</button>
-</div>
-
-<style>
-  #intro {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background-color: #08090d; /* Neural Black */
-    display: grid;
-    place-items: center;
-    opacity: 1;
-    transition: opacity 800ms ease;
-  }
-  #intro.fade-out {
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  #intro-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    display: block;
-  }
-
-  #intro-skip {
-    position: absolute;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 10px 24px;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.5);
-    color: #64748b;
-    backdrop-filter: blur(4px);
-    cursor: pointer;
-    font-family: 'Courier New', monospace;
-    font-size: 13px;
-    letter-spacing: 1px;
-    transition: all 0.3s ease;
-    text-transform: uppercase;
-    z-index: 10;
-  }
-  #intro-skip:hover {
-    border-color: #38bdf8;
-    color: #38bdf8;
-    background: rgba(56, 189, 248, 0.05);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    #intro { display: none !important; }
-  }
-</style>
-
 <script>
 (function() {
-  const overlay = document.getElementById('intro');
-  const canvas  = document.getElementById('intro-canvas');
-  const skipBtn = document.getElementById('intro-skip');
-  if (!overlay || !canvas) return;
+  const overlay = document.getElementById('intro-overlay');
+  const btn     = document.getElementById('intro-btn');
+  const canvas  = document.getElementById('background-canvas');
+  if (!canvas) return;
 
   const ctx = canvas.getContext('2d', { alpha: false });
   let w, h, dpr;
   let raf = null;
   
   // --- CONFIG ---
-  const NODE_COUNT = 200;    
+  const NODE_COUNT = 180;    
   const DURATION   = 2200;   
   const CONNECT_DIST = 120;  
 
@@ -173,16 +196,11 @@
       const startX = Math.random() * w;
       const startY = Math.random() * h;
       
-      // Calculate Gaussian Pulse Target
-      // X range normalized: -0.5 to 0.5
       const normalizedX = (startX / w) - 0.5;
-      
-      // Gaussian: A * exp( -(x-mu)^2 / 2sigma^2 )
-      // We use a high multiplier on X inside exp to make it sharp
-      // Multiplier 14 creates a distinct sharp pulse
-      const pulse = Math.exp( -Math.pow(normalizedX * 14, 2) );
-      
-      const targetY = (h * 0.8) - (h * 0.6) * pulse; 
+      // Gaussian Pulse: Shifted down to bottom 20% of screen so it doesn't block text
+      // Formula: center + amplitude * exp(...)
+      const pulse = Math.exp( -Math.pow(normalizedX * 12, 2) );
+      const targetY = (h * 0.85) - (h * 0.5) * pulse; 
 
       nodes.push({
         x: startX,
@@ -191,7 +209,7 @@
         startY: startY,
         targetX: startX, 
         targetY: targetY,
-        bias: Math.random() * 0.3 // Randomize arrival slightly
+        bias: Math.random() * 0.3
       });
     }
   }
@@ -208,7 +226,6 @@
   resize();
   window.addEventListener('resize', resize);
 
-  // Cubic easing for a clean "snap" into place
   function easeOutCubic(x) {
     return 1 - Math.pow(1 - x, 3);
   }
@@ -221,20 +238,20 @@
     const elapsed = timestamp - startTime;
     let progress = Math.min(1, elapsed / DURATION);
     
+    // Once finished, we stick to progress = 1 to keep the shape static/stable
+    if(isFinished && progress >= 1) progress = 1;
+
     const snap = easeOutCubic(progress);
 
     // --- DRAWING ---
     ctx.fillStyle = "#08090d";
     ctx.fillRect(0, 0, w, h);
 
-    // Faint Grid
+    // Faint Grid (Background)
     ctx.strokeStyle = "rgba(255,255,255,0.02)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    // Only draw vertical grid lines near the pulse center to focus attention
-    const center = w/2;
     for(let i=0; i<w; i+=100) { ctx.moveTo(i,0); ctx.lineTo(i,h); }
-    // Horizontal lines
     for(let j=0; j<h; j+=100) { ctx.moveTo(0,j); ctx.lineTo(w,j); }
     ctx.stroke();
 
@@ -245,12 +262,10 @@
     for (let i = 0; i < NODE_COUNT; i++) {
       const n = nodes[i];
       
-      // Update position
       const currentSnap = Math.max(0, Math.min(1, snap - n.bias * 0.2));
       n.x = n.startX + (n.targetX - n.startX) * currentSnap;
       n.y = n.startY + (n.targetY - n.startY) * currentSnap;
       
-      // Connect nearby nodes
       for (let j = i + 1; j < NODE_COUNT; j++) {
         const n2 = nodes[j];
         const dx = n.x - n2.x;
@@ -259,8 +274,7 @@
         
         if (distSq < CONNECT_DIST * CONNECT_DIST) {
           const alpha = 1 - Math.sqrt(distSq) / CONNECT_DIST;
-          // Pulse Color: Blue/Cyan mix
-          ctx.strokeStyle = `rgba(56, 189, 248, ${alpha * 0.2})`;
+          ctx.strokeStyle = `rgba(56, 189, 248, ${alpha * 0.2})`; // Cyan
           ctx.moveTo(n.x, n.y);
           ctx.lineTo(n2.x, n2.y);
         }
@@ -271,12 +285,9 @@
     // Draw Nodes
     for (let i = 0; i < NODE_COUNT; i++) {
       const n = nodes[i];
-      
-      // Determine if node is "converged" (close to target)
       const distToTarget = Math.abs(n.y - n.targetY);
-      const isConverged = distToTarget < 5;
+      const isConverged = distToTarget < 5 && snap > 0.8;
 
-      // Color: White core if converged, darker blue if moving
       const r = isConverged ? 220 : 14; 
       const g = isConverged ? 240 : 165; 
       const b = isConverged ? 255 : 233;
@@ -288,27 +299,28 @@
       ctx.fill();
     }
 
-    if (progress < 1 && !isFinished) {
-      raf = requestAnimationFrame(loop);
-    } else if (!isFinished) {
-      finishAnimation();
-    }
+    // Keep loop running forever for background refresh
+    raf = requestAnimationFrame(loop);
   }
 
   function finishAnimation() {
     isFinished = true;
-    overlay.classList.add('fade-out');
-    setTimeout(() => {
-      cancelAnimationFrame(raf);
-      overlay.remove();
-    }, 850); // Slight delay to let user see the final pulse shape
+    if(overlay) {
+        overlay.classList.add('fade-out');
+        setTimeout(() => {
+            overlay.remove(); 
+            // We do NOT stop the canvas loop
+        }, 1000);
+    }
   }
 
   raf = requestAnimationFrame(loop);
 
-  skipBtn.addEventListener('click', () => {
-    if(!isFinished) finishAnimation();
-  });
+  if(btn) {
+      btn.addEventListener('click', () => {
+        finishAnimation();
+      });
+  }
 })();
 </script>
 
