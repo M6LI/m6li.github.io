@@ -16,32 +16,32 @@ Let's suppose we have an input $x \in \mathbb{R}$, and that the true data genera
 \[ Y = f(x)+\epsilon, \qquad \mathbb{E}(\epsilon)=0, ~\mathbb{E}(\epsilon^2)=\sigma^2,
 \]
 where $\epsilon$ represents noise. Suppose we also have a predictive model $\widehat{Y}=\widehat{f}(x)$. Before we begin any computation, let's clarify what is random and what is deterministic. The deterministic quantities are:
-\begin{itemize}
-    \item the point $x$,
-    \item the true function $f(x)$,
-    \item the noise variance $\sigma^2$.
-\end{itemize}
+
+- the point $x$,
+- the true function $f(x)$,
+- the noise variance $\sigma^2$.
+
 The random quantities are:
-\begin{itemize}
-    \item the training dataset $\mathcal{D} := \{(X_i, Y_i) \}$,
-    \item the learned predictor $\widehat{Y}$ (since it's a function of $\mathcal{D}$),
-    \item the response $Y=f(x)+\epsilon$.
-\end{itemize}
+
+- the training dataset $\mathcal{D} := \{(X_i, Y_i) \}$,
+- the learned predictor $\widehat{Y}$ (since it's a function of $\mathcal{D}$),
+- the response $Y=f(x)+\epsilon$.
 Therefore all expectations will be taken over the joint randomness of the training set $\mathcal{D}$ and noise $\epsilon$. We can decompose the mean-squared error:
-\begin{equation}
+$$
 \begin{aligned}
     \text{MSE}(Y,\widehat{Y}) &= \mathbb{E}( (Y - \widehat{Y})^2) = \mathbb{E}\left[ (f(x) - \widehat{f}(x) - \epsilon)^2 \right] \\[1ex] &= \mathbb{E} ( (f(x)-\widehat{f}(x))^2) - 2 \mathbb{E}(f(x)-\widehat{f}(x))  \underbrace{\mathbb{E}(\epsilon)}_{=0}+\mathbb{E}(\epsilon^2) \\[1ex]
     &= \mathbb{E} ( (f(x)-\widehat{f}(x))^2) +\mathbb{E}(\epsilon^2).
 \end{aligned}
-\end{equation}
+$$
   Above, we also assumed crucially that the noise $\epsilon$ is independent of the training data $\mathcal{D}$, as otherwise the cross-term does not vanish. Let's now proceed with the calculation.
 
 Adding and subtracting $\mu(x) :=\mathbb{E}(\widehat{f}(x))$ gives us
-\begin{equation}
+
+$$
     \begin{aligned}
           \text{MSE}(Y,\widehat{Y}) &= \mathbb{E}((f(x)-\mu(x))^2) + \mathbb{E}((\widehat{f}(x)-\mu(x))^2)  \\[1ex] &+ 2(f(x)- \mu(x)) \underbrace{\mathbb{E}(\mu(x) - \widehat{f}(x))}_{=0} + \sigma^2 \\[1ex] &=  (f(x)- \mu)^2 + \mathbb{E} ( (\widehat{f}(x)- \mathbb{E}(\widehat{f}(x)))^2) + \sigma^2 \\[1ex] &= \text{Bias}^2 + \text{Variance} + \sigma^2.
           \end{aligned}
-\end{equation}
+$$
 This computation tells us that the reducible error of a machine learning model comes from two sources: the bias and the variance. 
 \subsection*{The bias-variance trade-off}
 The bias-variance trade-off follows up on the above decomposition and describes how these two factors are affected by model complexity:
@@ -73,10 +73,8 @@ From the perspective of the bias--variance decomposition, this behaviour is quit
 In models such as neural networks trained with gradient-based methods, the optimisation procedure introduces an implicit regularisation bias. Even though the hypothesis class is extremely large, optimisation tends to favour solutions with particular structure: low norm weights, smoother functions, or low-frequency representations. As a result, increasing the number of parameters does not necessarily increase the effective complexity of the learned predictor.
 
 In other words, there is a distinction between:
-\begin{itemize}
-    \item \emph{expressive capacity}: what the model could represent in principle,
-    \item \emph{effective complexity}: what the model actually learns under a given training procedure.
-\end{itemize} 
+- \emph{expressive capacity}: what the model could represent in principle,
+- \emph{effective complexity}: what the model actually learns under a given training procedure.
 
 The classical bias--variance trade-off implicitly assumes that these two notions coincide, but in modern settings they often do not.
 
@@ -87,4 +85,3 @@ None of this means that the bias--variance trade-off is wrong. Rather, it is inc
 For practitioners, the key takeaway is that generalisation is governed not only by model architecture, but also by optimisation, data structure, and inductive bias. For theorists, this mismatch is what motivates the massive amounts of recent ML literature that aims to understand generalisation more deeply.
 
 In conclusion, the bias--variance trade-off is a valuable conceptual tool, but like most things, it must be applied with care, and with a clear understanding of its assumptions.
-
