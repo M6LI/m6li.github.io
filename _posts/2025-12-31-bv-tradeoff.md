@@ -15,10 +15,10 @@ The bias–variance trade-off is a fundamental concept popularised in the late $
 
 Let's suppose we have an input $x \in \mathbb{R}$, and that the true data-generating process is given by
 $
-Y = f(x) + \epsilon, \qquad \mathbb{E}(\epsilon) = 0, \quad \mathbb{E}(\epsilon^2) = \sigma^2,
+Y = f(x) + \epsilon,¬ \mathbb{E}(\epsilon) = 0, ¬ \mathbb{E}(\epsilon^2) = \sigma^2,
 $
 where $\epsilon$ represents noise. Suppose we also have a predictive model $\widehat{Y} = \widehat{f}(x)$.
-
+https://github.com/M6LI/m6li.github.io/blob/main/_posts/2025-12-31-bv-tradeoff.md
 Before we begin any computation, let's clarify what is random and what is deterministic. The deterministic quantities are:
 
 - the point $x$,
@@ -34,7 +34,7 @@ The random quantities are:
 Therefore, all expectations will be taken over the joint randomness of the training set $\mathcal{D}$ and the noise $\epsilon$.
 
 We can decompose the mean-squared error:
-$
+$$
 \begin{aligned}
 \text{MSE}(Y, \widehat{Y})
 &= \mathbb{E}\bigl((Y - \widehat{Y})^2\bigr) \\
@@ -44,12 +44,12 @@ $
 + \mathbb{E}(\epsilon^2) \\
 &= \mathbb{E}\bigl((f(x) - \widehat{f}(x))^2\bigr) + \mathbb{E}(\epsilon^2).
 \end{aligned}
-$
+$$
 
 Above, we also crucially assumed that the noise $\epsilon$ is independent of the training data $\mathcal{D}$; otherwise, the cross-term does not vanish. Let us now proceed with the calculation.
 
 Adding and subtracting $\mu(x) := \mathbb{E}(\widehat{f}(x))$ gives
-$
+$$
 \begin{aligned}
 \text{MSE}(Y, \widehat{Y})
 &= \mathbb{E}\bigl((f(x) - \mu(x))^2\bigr)
@@ -61,7 +61,7 @@ $
 + \sigma^2 \\
 &= \text{Bias}^2 + \text{Variance} + \sigma^2.
 \end{aligned}
-$
+$$
 
 This computation tells us that the *reducible* error of a machine learning model comes from two sources: the bias and the variance.
 
